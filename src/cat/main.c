@@ -12,8 +12,6 @@ typedef struct {
     int vOpt;
 } CatOptions;
 
-void catNoOptions(const char *filename);
-
 CatOptions getOptions(int argc, char *argv[], int *code);
 
 void catWithOptions(char *argv[], const CatOptions *options);
@@ -21,27 +19,13 @@ void catWithOptions(char *argv[], const CatOptions *options);
 int main(int argc, char *argv[]) {
     if (argc == 1) {
         printf("n/a");
-    } else if (argc == 2) {
-        catNoOptions(argv[1]);
     } else {
-        int filename_index = 0, code = 0;
+        int code = 0;
         CatOptions options = getOptions(argc, argv, &code);
         if (code != BAD_OPTIONS) {
             catWithOptions(argv, &options);
         } else {
             printf("n/a");
-        }
-    }
-}
-
-void catNoOptions(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        printf("n/a");
-    } else {
-        int c = EOF;
-        while ((c = getc(file)) != EOF) {
-            printf("%c", c);
         }
     }
 }
