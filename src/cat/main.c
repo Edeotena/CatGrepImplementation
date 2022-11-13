@@ -92,7 +92,14 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code
                             ++string_number;
                         }
                         empty_string = (last_ch == '\n' && ch == '\n') ? 1 : 0;
-                        printf("%c", ch);
+                        if (options->eOpt == 1 && ch == '\n') {
+                            printf("$");
+                        }
+                        if (options->tOpt == 1 && ch == '\t') {
+                            printf("^");
+                        } else {
+                            printf("%c", ch);
+                        }
                     }
                     last_ch = ch;
                 }
