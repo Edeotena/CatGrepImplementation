@@ -1,7 +1,16 @@
 #include <stdio.h>
 
-void catNoOptions(char *argv[]) {
-    FILE* file = fopen(argv[1], "r");
+typedef struct {
+    int eOpt;
+    int bOpt;
+    int nOpt;
+    int sOpt;
+    int tOpt;
+    int vOpt;
+} CatOptions;
+
+void catNoOptions(char *filename) {
+    FILE* file = fopen(filename, "r");
     if (file == NULL) {
         printf("n/a");
     } else {
@@ -12,10 +21,18 @@ void catNoOptions(char *argv[]) {
     }
 }
 
+void catWithOptions(char *argv[], CatOptions *options) {
+
+}
+
 int main(int argc, char* argv[]) {
-    if (argc == 2) {
-        catNoOptions(argv);
-    } else {
+    if (argc == 1) {
         printf("n/a");
+    }
+    else if (argc == 2) {
+        catNoOptions(argv[1]);
+    } else {
+        CatOptions options  ;
+        catWithOptions(argv, &options);
     }
 }
