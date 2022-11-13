@@ -78,19 +78,20 @@ CatOptions getOptions(int argc, char *argv[], int *code) {
 }
 
 void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code) {
-    int string_number = 1;
+    int string_number = 1, empty_string = 0;
     for (int i = 1; i < argc && *code == 0; ++i) {
         if (argv[i][0] != '\0') {
             FILE *file = fopen(argv[i], "r");
             if (file != NULL) {
                 char ch, last_ch = '\n';
                 while ((ch = (char) getc(file)) != EOF) {
-                    if (options->sOpt != 1 || !(last_ch == '\n' && ch == '\n')) {
+                    if (options->sOpt != 1 || ch != '\n' || empty_string != 1) {
                         if ((options->bOpt == 1 && last_ch == '\n' && ch != '\n') ||
                             (options->nOpt == 1 && options->bOpt != 1 && last_ch == '\n')) {
                             printf("%6d\t", string_number);
                             ++string_number;
                         }
+                        empty_string = (last_ch == '\n' && ch == '\n') ? 1 : 0;
                         printf("%c", ch);
                     }
                     last_ch = ch;
