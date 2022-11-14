@@ -99,7 +99,7 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code
                         if (options->eOpt == 1 && ch == '\n') {
                             putchar('$');
                         }
-                        if ((options->tOpt == 1 || options->vOpt == 1) && ch == '\t') {
+                        if (options->tOpt == 1 && ch == '\t') {
                             printf("^I");
                         } else if (options->vOpt == 1 && !isascii(ch)) {
                             printf("M-");
