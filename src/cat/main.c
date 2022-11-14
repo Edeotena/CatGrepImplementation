@@ -3,7 +3,6 @@
 #include <ctype.h>
 
 #define BAD_OPTIONS (-1)
-#define BAD_FILES (-2)
 
 typedef struct {
     int eOpt;
@@ -16,7 +15,7 @@ typedef struct {
 
 CatOptions getOptions(int argc, char *argv[], int *code);
 
-void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code);
+void catWithOptions(int argc, char *argv[], const CatOptions *options);
 
 int main(int argc, char *argv[]) {
     if (argc == 1) {
@@ -28,10 +27,7 @@ int main(int argc, char *argv[]) {
             if (options.bOpt == 1) {
                 options.nOpt = 0;
             }
-            catWithOptions(argc, argv, &options, &code);
-            if (code == BAD_FILES) {
-                printf("n/a");
-            }
+            catWithOptions(argc, argv, &options);
         } else {
             printf("n/a");
         }
@@ -81,9 +77,9 @@ CatOptions getOptions(int argc, char *argv[], int *code) {
     return result;
 }
 
-void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code) {
+void catWithOptions(int argc, char *argv[], const CatOptions *options) {
     int string_number = 1, empty_string = 0;
-    for (int i = 1; i < argc && *code == 0; ++i) {
+    for (int i = 1; i < argc; ++i) {
         if (argv[i][0] != '\0') {
             FILE *file = fopen(argv[i], "r");
             if (file != NULL) {
@@ -116,8 +112,6 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code
                     }
                     last_ch = ch;
                 }
-            } else {
-                *code = BAD_FILES;
             }
         }
     }
