@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #define BAD_OPTIONS (-1)
 #define BAD_FILES (-2)
@@ -28,6 +29,9 @@ int main(int argc, char *argv[]) {
                 options.nOpt = 0;
             }
             catWithOptions(argc, argv, &options, &code);
+            if (code == BAD_FILES) {
+                printf("n/a");
+            }
         } else {
             printf("n/a");
         }
@@ -84,7 +88,7 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code
             FILE *file = fopen(argv[i], "r");
             if (file != NULL) {
                 char ch, last_ch = '\n';
-                while ((ch = (char) getc(file)) != EOF) {
+                while ((ch = (char) fgetc(file)) != EOF) {
                     if (options->sOpt != 1 || ch != '\n' || empty_string != 1) {
                         if ((options->bOpt == 1 && last_ch == '\n' && ch != '\n') ||
                             (options->nOpt == 1 && options->bOpt != 1 && last_ch == '\n')) {
@@ -93,12 +97,21 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options, int *code
                         }
                         empty_string = (last_ch == '\n' && ch == '\n') ? 1 : 0;
                         if (options->eOpt == 1 && ch == '\n') {
-                            printf("$");
+                            putchar('$');
                         }
-                        if (options->tOpt == 1 && ch == '\t') {
-                            printf("^");
+                        if ((options->tOpt == 1 || options->vOpt == 1) && ch == '\t') {
+                            printf("^I");
+                        } else if (options->vOpt == 1 && !isascii(ch)) {
+                            printf("M-");
+                            ch = toascii(ch);
+                            if (iscntrl(ch)) {
+                                putchar('^');
+                                putchar(ch == '\177' ? '?' : ch | 0100);
+                            } else {
+                                printf("%c", ch);
+                            }
                         } else {
-                            printf("%c", ch);
+                            putchar(ch);
                         }
                     }
                     last_ch = ch;
