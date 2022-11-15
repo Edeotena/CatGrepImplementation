@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define ALLOC_ERROR (-1)
+
 typedef struct {
     char **patterns;
     int patternsCount;
@@ -60,10 +62,10 @@ int checkPatterns(int argc, char *argv[]) {
 int writePattern(GrepOptions *options, char* pattern) {
     int result = 0;
     if (options->patternsCap == options->patternsCount) {
-        options->patternsCap = options->patternsCap != 0 ? 3 : options->patternsCap * 2;
+        options->patternsCap = options->patternsCap == 0 ? 3 : options->patternsCap * 2;
         char **new_ptr = (char**)realloc(options->patterns, options->patternsCap * sizeof(char*));
-        if (new_ptr != NULL) {
-            result = 1;
+        if (new_ptr == NULL) {
+            result = ALLOC_ERROR;
             free_array(options->patterns, options->patternsCount);
         } else {
             options->patterns = new_ptr;
@@ -76,10 +78,11 @@ int writePattern(GrepOptions *options, char* pattern) {
             strcpy(options->patterns[options->patternsCount], pattern);
             ++options->patternsCount;
         } else {
-            result = 1;
+            result = ALLOC_ERROR;
             free_array(options->patterns, options->patternsCount);
         }
     }
+    return result;
 }
 
 GrepOptions getOptions(int argc, char* argv[], int *code) {
@@ -121,6 +124,5 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         } else {
 
         }
-
     }
 }
