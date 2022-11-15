@@ -113,6 +113,7 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options) {
                     last_ch = ch;
                 }
             }
+            fclose(file);
         }
     }
 }
