@@ -4,6 +4,7 @@
 #include <string.h>
 
 #define ALLOC_ERROR (-1)
+#define FILE_OPEN_ERROR (-2)
 
 typedef struct {
     char **patterns;
@@ -25,31 +26,37 @@ int checkPatterns(int argc, char *argv[]);
 
 int writePattern(GrepOptions *options, char* pattern);
 
-void free_array(char **arr, int size);
+int writePatternsFile(GrepOptions *options, char* file_name);
+
+void freeArray(char **arr, int size);
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
         GrepOptions options = getOptions(argc, argv, &code);
+
+        freeArray(options.patterns, options.patternsCount);
     } else {
         printf("n/a");
     }
 }
 
-void free_array(char **arr, int size) {
+void freeArray(char **arr, int size) {
     for (int i = 0; i < size; ++i) {
         free(arr[i]);
     }
-    free (arr);
+    if (arr != NULL) {
+        free(arr);
+    }
 }
 
 // Проверка на то, есть ли флаги -e / -f
 int checkPatterns(int argc, char *argv[]) {
     int result = 0;
-    for (int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc && result == 0; ++i) {
         if (argv[i][0] == '-') {
             size_t len = strlen(argv[i]);
-            for (int j = 1; j < len; ++j) {
+            for (int j = 1; j < len && result == 0; ++j) {
                 if (argv[i][j] == 'e' || argv[i][j] == 'f') {
                     result = 1;
                 }
@@ -59,6 +66,7 @@ int checkPatterns(int argc, char *argv[]) {
     return result;
 }
 
+// Добавление паттерна к массиву
 int writePattern(GrepOptions *options, char* pattern) {
     int result = 0;
     if (options->patternsCap == options->patternsCount) {
@@ -66,7 +74,7 @@ int writePattern(GrepOptions *options, char* pattern) {
         char **new_ptr = (char**)realloc(options->patterns, options->patternsCap * sizeof(char*));
         if (new_ptr == NULL) {
             result = ALLOC_ERROR;
-            free_array(options->patterns, options->patternsCount);
+            freeArray(options->patterns, options->patternsCount);
         } else {
             options->patterns = new_ptr;
         }
@@ -79,8 +87,23 @@ int writePattern(GrepOptions *options, char* pattern) {
             ++options->patternsCount;
         } else {
             result = ALLOC_ERROR;
-            free_array(options->patterns, options->patternsCount);
+            freeArray(options->patterns, options->patternsCount);
         }
+    }
+    return result;
+}
+
+int writePatternsFile(GrepOptions *options, char* file_name) {
+    int result = 0;
+    FILE *file = fopen(file_name, "r");
+    if (file != NULL) {
+        char *line;
+        size_t len;
+        while (getline(&line, &len, file)) {
+            printf("%s", line);
+        }
+    } else {
+        result = FILE_OPEN_ERROR;
     }
     return result;
 }
@@ -121,8 +144,10 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             } else if (argv[i][len - 1] == 'f') {
                 next_pattern_file = 1;
             }
-        } else {
-
+        } else if (next_pattern == 1) {
+            writePattern(&result, argv[i]);
+        } else if (next_pattern_file == 1) {
+            writePatternsFile(&result, argv[i]);
         }
     }
 }
