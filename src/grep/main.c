@@ -30,7 +30,7 @@ int writePatternsFile(GrepOptions *options, char* file_name);
 
 void freeArray(char **arr, int size);
 
-
+void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 
 void writeArray(char **arr, int size) {
     for (int i = 0; i < size; ++i) {
@@ -43,7 +43,11 @@ int main(int argc, char *argv[]) {
         int code = 0;
         GrepOptions options = getOptions(argc, argv, &code);
         //writeArray(options.patterns, options.patternsCount);
-
+        if (code == 0) {
+            grepWithOptions(&options, argc, argv);
+        } else {
+            printf("n/a");
+        }
         freeArray(options.patterns, options.patternsCount);
     } else {
         printf("n/a");
@@ -154,12 +158,15 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             } else if (argv[i][len - 1] == 'f') {
                 next_pattern_file = 1;
             }
+            argv[i][0] = '\0';
         } else if (next_pattern == 1) {
             *code = writePattern(&result, argv[i]);
             next_pattern = 0;
+            argv[i][0] = '\0';
         } else if (next_pattern_file == 1) {
             *code = writePatternsFile(&result, argv[i]);
             next_pattern_file = 0;
+            argv[i][0] = '\0';
         }
     }
     return result;
