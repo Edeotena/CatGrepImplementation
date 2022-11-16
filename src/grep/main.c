@@ -32,6 +32,8 @@ void freeArray(char **arr, int size);
 
 void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 
+int isPatternIn(const GrepOptions *options, const char *line);
+
 void writeArray(char **arr, int size) {
     for (int i = 0; i < size; ++i) {
         printf("%s\n", arr[i]);
@@ -69,7 +71,7 @@ int checkPatterns(int argc, char *argv[]) {
     for (int i = 1; i < argc && result == 0; ++i) {
         if (argv[i][0] == '-') {
             size_t len = strlen(argv[i]);
-            for (int j = 1; j < len && result == 0; ++j) {
+            for (size_t j = 1; j < len && result == 0; ++j) {
                 if (argv[i][j] == 'e' || argv[i][j] == 'f') {
                     result = 1;
                 }
@@ -133,7 +135,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
     for (; i < argc && *code == 0; ++i) {
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
             size_t len = strlen(argv[i]);
-            for (int j = 1; j < len; ++j) {
+            for (size_t j = 1; j < len; ++j) {
                 if (argv[i][j] == 'i') {
                     result.iOpt = 1;
                 } else if (argv[i][j] == 'v') {
@@ -166,4 +168,38 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         }
     }
     return result;
+}
+
+int isPatternIn(const GrepOptions *options, const char *line) {
+    int result = 0;
+    for (int i = 0; i < options->patternsCount; ++i) {
+        if (strstr(line, options->patterns[i]) != NULL) {
+            result = 1;
+        }
+    }
+    if (options->vOpt == 1) {
+        result = result == 1 ? 0 : 1;
+    }
+    return result;
+}
+
+void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] != '\0') {
+            FILE *file = fopen(argv[i], "r");
+            if (file != NULL) {
+                char *line;
+                size_t n;
+                while(getline(&line, &n, file) != EOF) {
+                    line[strlen(line) - 1] = '\0';
+                    printf("%s ", line);
+                    isPatternIn(options, line) == 1 ? printf("  <-- good") : printf("  <-- bad");
+                    printf("\n");
+                }
+                fclose(file);
+            } else {
+                printf("grep: %s: No such file or directory\n", argv[i]);
+            }
+        }
+    }
 }
