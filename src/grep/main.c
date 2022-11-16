@@ -7,7 +7,7 @@
 #define FILE_OPEN_ERROR (-2)
 
 typedef struct {
-    char **patterns;
+    regex_t **patterns;
     int patternsCount;
     int patternsCap;
     int iOpt;
@@ -24,15 +24,17 @@ GrepOptions getOptions(int argc, char* argv[], int *code);
 
 int checkPatterns(int argc, char *argv[]);
 
-int writePattern(GrepOptions *options, char* pattern);
+int writePattern(GrepOptions *options, const char* pattern, int ignore_case);
 
-int writePatternsFile(GrepOptions *options, char* file_name);
+int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case);
 
-void freeArray(char **arr, int size);
+void freeArray(regex_t **arr, int size);
 
 void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 
 int isPatternIn(const GrepOptions *options, const char *line);
+
+int checkIgnoreCase(int argc, char *argv[]);
 
 void writeArray(char **arr, int size) {
     for (int i = 0; i < size; ++i) {
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
     }
 }
 
-void freeArray(char **arr, int size) {
+void freeArray(regex_t **arr, int size) {
     for (int i = 0; i < size; ++i) {
         free(arr[i]);
     }
@@ -82,11 +84,11 @@ int checkPatterns(int argc, char *argv[]) {
 }
 
 // Добавление паттерна к массиву
-int writePattern(GrepOptions *options, char* pattern) {
+int writePattern(GrepOptions *options, const char* pattern, int ignore_case) {
     int result = 0;
     if (options->patternsCap == options->patternsCount) {
         options->patternsCap = options->patternsCap == 0 ? 3 : options->patternsCap * 2;
-        char **new_ptr = (char**)realloc(options->patterns, options->patternsCap * sizeof(char*));
+        regex_t **new_ptr = (regex_t**)realloc(options->patterns, options->patternsCap * sizeof(regex_t*));
         if (new_ptr == NULL) {
             result = ALLOC_ERROR;
             freeArray(options->patterns, options->patternsCount);
@@ -96,9 +98,9 @@ int writePattern(GrepOptions *options, char* pattern) {
     }
     if (result == 0) {
         size_t len = strlen(pattern);
-        options->patterns[options->patternsCount] = (char*)calloc(len, sizeof(char));
+        options->patterns[options->patternsCount] = (regex_t*)calloc(len, sizeof(regex_t));
         if (options->patterns[options->patternsCount] != NULL) {
-            strcpy(options->patterns[options->patternsCount], pattern);
+            result = regcomp(options->patterns[options->patternsCount], pattern, ignore_case == 0 ? REG_EXTENDED : REG_ICASE);
             ++options->patternsCount;
         } else {
             result = ALLOC_ERROR;
@@ -108,7 +110,7 @@ int writePattern(GrepOptions *options, char* pattern) {
     return result;
 }
 
-int writePatternsFile(GrepOptions *options, char* file_name) {
+int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case) {
     int result = 0;
     FILE *file = fopen(file_name, "r");
     if (file != NULL) {
@@ -116,7 +118,7 @@ int writePatternsFile(GrepOptions *options, char* file_name) {
         size_t len;
         while (getline(&line, &len, file) != EOF) {
             line[strlen(line) - 1] = '\0';
-            writePattern(options, line);
+            writePattern(options, line, ignore_case);
         }
     } else {
         result = FILE_OPEN_ERROR;
@@ -127,13 +129,13 @@ int writePatternsFile(GrepOptions *options, char* file_name) {
 GrepOptions getOptions(int argc, char* argv[], int *code) {
     int next_pattern = 0, next_pattern_file = 0, files_counter = 0;
     GrepOptions result = {};
-    int search_string = 0;
+    int search_string = 0, ignore_case = checkIgnoreCase(argc, argv);
     if (checkPatterns(argc, argv) != 1) {
         search_string = 1;
         while (argv[search_string][0] == '-') {
             ++search_string;
         }
-        *code = writePattern(&result, argv[search_string]);
+        *code = writePattern(&result, argv[search_string], ignore_case);
     }
     for (int i = 1; i < argc && *code == 0; ++i) {
         if (i == search_string) {
@@ -142,9 +144,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
             size_t len = strlen(argv[i]);
             for (size_t j = 1; j < len; ++j) {
-                if (argv[i][j] == 'i') {
-                    result.iOpt = 1;
-                } else if (argv[i][j] == 'v') {
+                if (argv[i][j] == 'v') {
                     result.vOpt = 1;
                 } else if (argv[i][j] == 'c') {
                     result.cOpt = 1;
@@ -164,11 +164,11 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             next_pattern_file = argv[i][len - 1] == 'f' ? 1 : 0;
             argv[i][0] = '\0';
         } else if (next_pattern == 1) {
-            *code = writePattern(&result, argv[i]);
+            *code = writePattern(&result, argv[i], ignore_case);
             next_pattern = 0;
             argv[i][0] = '\0';
         } else if (next_pattern_file == 1) {
-            *code = writePatternsFile(&result, argv[i]);
+            *code = writePatternsFile(&result, argv[i], ignore_case);
             next_pattern_file = 0;
             argv[i][0] = '\0';
         } else {
@@ -184,12 +184,27 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
 int isPatternIn(const GrepOptions *options, const char *line) {
     int result = 0;
     for (int i = 0; i < options->patternsCount; ++i) {
-        if (strstr(line, options->patterns[i]) != NULL) {
+        if (regexec(options->patterns[i], line, 0, NULL, 0) == 0) {
             result = 1;
         }
     }
     if (options->vOpt == 1) {
         result = result == 1 ? 0 : 1;
+    }
+    return result;
+}
+
+int checkIgnoreCase(int argc, char *argv[]) {
+    int result = 0;
+    for (int i = 1; i < argc && result == 0; ++i) {
+        if (argv[i][0] == '-') {
+            size_t len = strlen(argv[i]);
+            for (size_t j = 1; j < len && result == 0; ++j) {
+                if (argv[i][j] == 'i') {
+                    result = 1;
+                }
+            }
+        }
     }
     return result;
 }
@@ -201,7 +216,7 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
             if (file != NULL) {
                 char *line;
                 size_t n;
-                while(getline(&line, &n, file) != EOF) {
+                while (getline(&line, &n, file) != EOF) {
                     line[strlen(line) - 1] = '\0';
                     printf("%s ", line);
                     isPatternIn(options, line) == 1 ? printf("  <-- good") : printf("  <-- bad");
