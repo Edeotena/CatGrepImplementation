@@ -30,10 +30,19 @@ int writePatternsFile(GrepOptions *options, char* file_name);
 
 void freeArray(char **arr, int size);
 
+
+
+void writeArray(char **arr, int size) {
+    for (int i = 0; i < size; ++i) {
+        printf("%s\n", arr[i]);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
         GrepOptions options = getOptions(argc, argv, &code);
+        //writeArray(options.patterns, options.patternsCount);
 
         freeArray(options.patterns, options.patternsCount);
     } else {
@@ -99,8 +108,9 @@ int writePatternsFile(GrepOptions *options, char* file_name) {
     if (file != NULL) {
         char *line;
         size_t len;
-        while (getline(&line, &len, file)) {
-            printf("%s", line);
+        while (getline(&line, &len, file) != EOF) {
+            line[strlen(line) - 1] = '\0';
+            writePattern(options, line);
         }
     } else {
         result = FILE_OPEN_ERROR;
@@ -116,7 +126,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         i = 2;
         *code = writePattern(&result, argv[1]);
     }
-    for (; i < argc && code == 0; ++i) {
+    for (; i < argc && *code == 0; ++i) {
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
             next_pattern = next_pattern_file = 0;
             size_t len = strlen(argv[i]);
@@ -145,9 +155,12 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
                 next_pattern_file = 1;
             }
         } else if (next_pattern == 1) {
-            writePattern(&result, argv[i]);
+            *code = writePattern(&result, argv[i]);
+            next_pattern = 0;
         } else if (next_pattern_file == 1) {
-            writePatternsFile(&result, argv[i]);
+            *code = writePatternsFile(&result, argv[i]);
+            next_pattern_file = 0;
         }
     }
+    return result;
 }
