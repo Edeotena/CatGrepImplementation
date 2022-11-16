@@ -125,14 +125,20 @@ int writePatternsFile(GrepOptions *options, char* file_name) {
 }
 
 GrepOptions getOptions(int argc, char* argv[], int *code) {
-    int next_pattern = 0, next_pattern_file = 0;
+    int next_pattern = 0, next_pattern_file = 0, files_counter = 0;
     GrepOptions result = {};
-    int i = 1;
+    int search_string = 0;
     if (checkPatterns(argc, argv) != 1) {
-        i = 2;
-        *code = writePattern(&result, argv[1]);
+        search_string = 1;
+        while (argv[search_string][0] == '-') {
+            ++search_string;
+        }
+        *code = writePattern(&result, argv[search_string]);
     }
-    for (; i < argc && *code == 0; ++i) {
+    for (int i = 1; i < argc && *code == 0; ++i) {
+        if (i == search_string) {
+            continue;
+        }
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
             size_t len = strlen(argv[i]);
             for (size_t j = 1; j < len; ++j) {
@@ -165,7 +171,12 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             *code = writePatternsFile(&result, argv[i]);
             next_pattern_file = 0;
             argv[i][0] = '\0';
+        } else {
+            ++files_counter;
         }
+    }
+    if (files_counter == 1) {
+        result.hOpt = 1;
     }
     return result;
 }
@@ -197,8 +208,6 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                     printf("\n");
                 }
                 fclose(file);
-            } else {
-                printf("grep: %s: No such file or directory\n", argv[i]);
             }
         }
     }
