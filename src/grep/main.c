@@ -7,7 +7,7 @@
 #define FILE_OPEN_ERROR (-2)
 
 typedef struct {
-    regex_t **patterns;
+    regex_t *patterns;
     int patternsCount;
     int patternsCap;
     int vOpt;
@@ -25,13 +25,13 @@ int writePattern(GrepOptions *options, const char* pattern, int ignore_case);
 
 int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case);
 
-void freeArray(regex_t **arr, int size);
-
 void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 
 int isPatternIn(const GrepOptions *options, const char *line);
 
 int checkSpecialOptions(int argc, char *argv[], int *iOpt);
+
+void freeRegex(GrepOptions *options);
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {
@@ -39,22 +39,20 @@ int main(int argc, char *argv[]) {
         GrepOptions options = getOptions(argc, argv, &code);
         if (code == 0) {
             grepWithOptions(&options, argc, argv);
+            freeRegex(&options);
         } else {
             printf("n/a");
         }
-        freeArray(options.patterns, options.patternsCount);
     } else {
         printf("n/a");
     }
 }
 
-void freeArray(regex_t **arr, int size) {
-    for (int i = 0; i < size; ++i) {
-        free(arr[i]);
+void freeRegex(GrepOptions *options) {
+    for (int i = 0; i < options->patternsCount; ++i) {
+        regfree(&options->patterns[i]);
     }
-    if (arr != NULL) {
-        free(arr);
-    }
+    free(options->patterns);
 }
 
 // Добавление паттерна к массиву
@@ -62,24 +60,19 @@ int writePattern(GrepOptions *options, const char* pattern, int ignore_case) {
     int result = 0;
     if (options->patternsCap == options->patternsCount) {
         options->patternsCap = options->patternsCap == 0 ? 3 : options->patternsCap * 2;
-        regex_t **new_ptr = (regex_t**)realloc(options->patterns, options->patternsCap * sizeof(regex_t*));
+        regex_t *new_ptr = (regex_t*)realloc(options->patterns, options->patternsCap * sizeof(regex_t));
         if (new_ptr == NULL) {
             result = ALLOC_ERROR;
-            freeArray(options->patterns, options->patternsCount);
         } else {
             options->patterns = new_ptr;
         }
     }
     if (result == 0) {
-        size_t len = strlen(pattern);
-        options->patterns[options->patternsCount] = (regex_t*)calloc(len, sizeof(regex_t));
-        if (options->patterns[options->patternsCount] != NULL) {
-            result = regcomp(options->patterns[options->patternsCount], pattern, ignore_case == 0 ? REG_EXTENDED : REG_ICASE);
-            ++options->patternsCount;
-        } else {
-            result = ALLOC_ERROR;
-            freeArray(options->patterns, options->patternsCount);
-        }
+        result = regcomp(&options->patterns[options->patternsCount], pattern, ignore_case == 0 ? REG_EXTENDED : REG_ICASE);
+        ++options->patternsCount;
+    }
+    if (result != 0) {
+        freeRegex(options);
     }
     return result;
 }
@@ -158,7 +151,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
 int isPatternIn(const GrepOptions *options, const char *line) {
     int result = 0;
     for (int i = 0; i < options->patternsCount; ++i) {
-        if (regexec(options->patterns[i], line, 0, NULL, 0) == 0) {
+        if (regexec(&options->patterns[i], line, 0, NULL, 0) == 0) {
             result = 1;
         }
     }
@@ -185,18 +178,27 @@ int checkSpecialOptions(int argc, char *argv[], int *iOpt) {
     return result;
 }
 
+size_t handleLOption(const GrepOptions *options, FILE *file) {
+    char *line = NULL;
+    size_t n, res = 0;
+    while (getline(&line, &n, file) != EOF && res == 0) {
+        line[strlen(line) - 1] = '\0';
+        if (isPatternIn(options, line) == 1) {
+            res = 1;
+        }
+    }
+    return res;
+}
+
 void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] != '\0') {
             FILE *file = fopen(argv[i], "r");
             if (file != NULL) {
-                char *line;
-                size_t n;
-                while (getline(&line, &n, file) != EOF) {
-                    line[strlen(line) - 1] = '\0';
-                    printf("%s ", line);
-                    isPatternIn(options, line) == 1 ? printf("  <-- good") : printf("  <-- bad");
-                    printf("\n");
+                if (options->lOpt == 1) {
+                    if (handleLOption(options, file) == 1) {
+                        printf("%s\n", argv[i]);
+                    }
                 }
                 fclose(file);
             }
