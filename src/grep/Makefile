@@ -3,9 +3,9 @@ FLAGS = -Wall -Wextra -Werror
 TARGET = s21_grep
 FILES = main.c
 
-all: build
+all: s21_grep
 
-build:
+s21_grep:
 	$(CC) $(FLAGS) $(FILES) -o $(TARGET)
 
 clean:
