@@ -112,8 +112,10 @@ void catWithOptions(int argc, char *argv[], const CatOptions *options) {
                     }
                     last_ch = ch;
                 }
+                fclose(file);
+            } else {
+                printf("cat: %s: No such file or directory\n", argv[i]);
             }
-            fclose(file);
         }
     }
 }
