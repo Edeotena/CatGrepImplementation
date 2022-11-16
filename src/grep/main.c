@@ -10,7 +10,6 @@ typedef struct {
     regex_t **patterns;
     int patternsCount;
     int patternsCap;
-    int iOpt;
     int vOpt;
     int cOpt;
     int lOpt;
@@ -22,8 +21,6 @@ typedef struct {
 
 GrepOptions getOptions(int argc, char* argv[], int *code);
 
-int checkPatterns(int argc, char *argv[]);
-
 int writePattern(GrepOptions *options, const char* pattern, int ignore_case);
 
 int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case);
@@ -34,19 +31,12 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 
 int isPatternIn(const GrepOptions *options, const char *line);
 
-int checkIgnoreCase(int argc, char *argv[]);
-
-void writeArray(char **arr, int size) {
-    for (int i = 0; i < size; ++i) {
-        printf("%s\n", arr[i]);
-    }
-}
+int checkSpecialOptions(int argc, char *argv[], int *iOpt);
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
         GrepOptions options = getOptions(argc, argv, &code);
-        //writeArray(options.patterns, options.patternsCount);
         if (code == 0) {
             grepWithOptions(&options, argc, argv);
         } else {
@@ -65,22 +55,6 @@ void freeArray(regex_t **arr, int size) {
     if (arr != NULL) {
         free(arr);
     }
-}
-
-// Проверка на то, есть ли флаги -e / -f
-int checkPatterns(int argc, char *argv[]) {
-    int result = 0;
-    for (int i = 1; i < argc && result == 0; ++i) {
-        if (argv[i][0] == '-') {
-            size_t len = strlen(argv[i]);
-            for (size_t j = 1; j < len && result == 0; ++j) {
-                if (argv[i][j] == 'e' || argv[i][j] == 'f') {
-                    result = 1;
-                }
-            }
-        }
-    }
-    return result;
 }
 
 // Добавление паттерна к массиву
@@ -129,8 +103,8 @@ int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case) {
 GrepOptions getOptions(int argc, char* argv[], int *code) {
     int next_pattern = 0, next_pattern_file = 0, files_counter = 0;
     GrepOptions result = {};
-    int search_string = 0, ignore_case = checkIgnoreCase(argc, argv);
-    if (checkPatterns(argc, argv) != 1) {
+    int search_string = 0, ignore_case = 0;
+    if (checkSpecialOptions(argc, argv, &ignore_case) != 1) {
         search_string = 1;
         while (argv[search_string][0] == '-') {
             ++search_string;
@@ -194,13 +168,15 @@ int isPatternIn(const GrepOptions *options, const char *line) {
     return result;
 }
 
-int checkIgnoreCase(int argc, char *argv[]) {
+int checkSpecialOptions(int argc, char *argv[], int *iOpt) {
     int result = 0;
     for (int i = 1; i < argc && result == 0; ++i) {
         if (argv[i][0] == '-') {
             size_t len = strlen(argv[i]);
             for (size_t j = 1; j < len && result == 0; ++j) {
                 if (argv[i][j] == 'i') {
+                    *iOpt = 1;
+                } else if (argv[i][j] == 'e' || argv[i][j] == 'f') {
                     result = 1;
                 }
             }
