@@ -132,7 +132,6 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
     }
     for (; i < argc && *code == 0; ++i) {
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
-            next_pattern = next_pattern_file = 0;
             size_t len = strlen(argv[i]);
             for (int j = 1; j < len; ++j) {
                 if (argv[i][j] == 'i') {
@@ -153,11 +152,8 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
                     result.oOpt = 1;
                 }
             }
-            if (argv[i][len - 1] == 'e') {
-                next_pattern = 1;
-            } else if (argv[i][len - 1] == 'f') {
-                next_pattern_file = 1;
-            }
+            next_pattern = argv[i][len - 1] == 'e' ? 1 : 0;
+            next_pattern_file = argv[i][len - 1] == 'f' ? 1 : 0;
             argv[i][0] = '\0';
         } else if (next_pattern == 1) {
             *code = writePattern(&result, argv[i]);
