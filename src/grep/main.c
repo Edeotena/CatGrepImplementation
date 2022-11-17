@@ -20,26 +20,29 @@ typedef struct {
     int oOpt;
 } GrepOptions;
 
+// Получение опций и паттернов из argv
 GrepOptions getOptions(int argc, char* argv[], int *code);
-
+// Добавление паттерна в структуру
 int writePattern(GrepOptions *options, const char* pattern, int ignore_case);
-
+// Чтение паттернов из файла и добавление их в структуру
 int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case);
-
+// Функция определяющая работу по опциям
 void grepWithOptions(const GrepOptions *options, int argc, char **argv);
-
+// Проверка строки на наличие паттернов
 int isPatternIn(const GrepOptions *options, const char *line);
-
+// Начальная проверка на опции -e -f -i
 int checkSpecialOptions(int argc, char *argv[], int *iOpt);
-
+// Освобождение выделенной памяти в структуре
 void freeRegex(GrepOptions *options);
-
+// Безопасное освобождение строки
+void safeFree(char *line);
+// Работа команды греп при опции l
 size_t handleLOption(const GrepOptions *options, FILE *file);
-
+// Работа команды греп при опции s
 size_t handleSOption(const GrepOptions *options, FILE *file);
-
+// Обработка символа в опцию
 void getSingleOptions(GrepOptions *options, char ch, int *code);
-
+// Обычная работа команды греп с учетом опций
 void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name);
 
 int main(int argc, char *argv[]) {
@@ -64,7 +67,12 @@ void freeRegex(GrepOptions *options) {
     free(options->patterns);
 }
 
-// Добавление паттерна к массиву
+void safeFree(char *line) {
+    if (line != NULL) {
+        free(line);
+    }
+}
+
 int writePattern(GrepOptions *options, const char* pattern, int ignore_case) {
     int result = 0;
     if (options->patternsCap == options->patternsCount) {
@@ -96,6 +104,7 @@ int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case) {
             line[strlen(line) - 1] = '\0';
             writePattern(options, line, ignore_case);
         }
+        safeFree(line);
     } else {
         result = FILE_OPEN_ERROR;
     }
@@ -203,6 +212,7 @@ size_t handleLOption(const GrepOptions *options, FILE *file) {
             res = 1;
         }
     }
+    safeFree(line);
     return res;
 }
 
@@ -215,6 +225,7 @@ size_t handleSOption(const GrepOptions *options, FILE *file) {
             ++res;
         }
     }
+    safeFree(line);
     return res;
 }
 
@@ -234,6 +245,7 @@ void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name)
             printf("%s\n", line);
         }
     }
+    safeFree(line);
 }
 
 void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
