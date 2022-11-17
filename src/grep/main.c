@@ -5,6 +5,7 @@
 
 #define ALLOC_ERROR (-1)
 #define FILE_OPEN_ERROR (-2)
+#define UNRECOGNIZED_OPTION (-3)
 
 typedef struct {
     regex_t *patterns;
@@ -36,6 +37,10 @@ void freeRegex(GrepOptions *options);
 size_t handleLOption(const GrepOptions *options, FILE *file);
 
 size_t handleSOption(const GrepOptions *options, FILE *file);
+
+void getSingleOptions(GrepOptions *options, char ch, int *code);
+
+void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name);
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {
@@ -97,6 +102,26 @@ int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case) {
     return result;
 }
 
+void getSingleOptions(GrepOptions *options, char ch, int *code) {
+    if (ch == 'v') {
+        options->vOpt = 1;
+    } else if (ch == 'c') {
+        options->cOpt = 1;
+    } else if (ch == 'l') {
+        options->lOpt = 1;
+    } else if (ch == 'n') {
+        options->nOpt = 1;
+    } else if (ch == 'h') {
+        options->hOpt = 1;
+    } else if (ch == 's') {
+        options->sOpt = 1;
+    } else if (ch == 'o') {
+        options->oOpt = 1;
+    } else if (ch != 'e' && ch != 'f'){
+        *code = UNRECOGNIZED_OPTION;
+    }
+}
+
 GrepOptions getOptions(int argc, char* argv[], int *code) {
     int next_pattern = 0, next_pattern_file = 0, files_counter = 0;
     GrepOptions result = {};
@@ -116,21 +141,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
             size_t len = strlen(argv[i]);
             for (size_t j = 1; j < len; ++j) {
-                if (argv[i][j] == 'v') {
-                    result.vOpt = 1;
-                } else if (argv[i][j] == 'c') {
-                    result.cOpt = 1;
-                } else if (argv[i][j] == 'l') {
-                    result.lOpt = 1;
-                } else if (argv[i][j] == 'n') {
-                    result.nOpt = 1;
-                } else if (argv[i][j] == 'h') {
-                    result.hOpt = 1;
-                } else if (argv[i][j] == 's') {
-                    result.sOpt = 1;
-                } else if (argv[i][j] == 'o') {
-                    result.oOpt = 1;
-                }
+                getSingleOptions(&result, argv[i][j], code);
             }
             next_pattern = argv[i][len - 1] == 'e' ? 1 : 0;
             next_pattern_file = argv[i][len - 1] == 'f' ? 1 : 0;
@@ -207,6 +218,24 @@ size_t handleSOption(const GrepOptions *options, FILE *file) {
     return res;
 }
 
+void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name) {
+    char *line = NULL;
+    size_t n, string_number = 1;
+    while (getline(&line, &n, file) != EOF) {
+        line[strlen(line) - 1] = '\0';
+        if (isPatternIn(options, line) == 1) {
+            if (options->hOpt == 0) {
+                printf("%s:", file_name);
+            }
+            if (options->nOpt == 1) {
+                printf("%zu:", string_number);
+                ++string_number;
+            }
+            printf("%s\n", line);
+        }
+    }
+}
+
 void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] != '\0') {
@@ -222,6 +251,8 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                         printf("%s:", argv[i]);
                     }
                     printf("%zu\n", count);
+                } else {
+                    handleUsuall(options, file, argv[i]);
                 }
                 fclose(file);
             }
