@@ -144,27 +144,26 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
         argv[search_string][0] = '\0';
     }
     for (int i = 1; i < argc && *code == 0; ++i) {
-        if (i == search_string) {
-            continue;
-        }
-        if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
-            size_t len = strlen(argv[i]);
-            for (size_t j = 1; j < len; ++j) {
-                getSingleOptions(&result, argv[i][j], code);
+        if (i != search_string) {
+            if (argv[i][0] == '-' && next_pattern_file == 0 && next_pattern == 0) {
+                size_t len = strlen(argv[i]);
+                for (size_t j = 1; j < len; ++j) {
+                    getSingleOptions(&result, argv[i][j], code);
+                }
+                next_pattern = argv[i][len - 1] == 'e' ? 1 : 0;
+                next_pattern_file = argv[i][len - 1] == 'f' ? 1 : 0;
+                argv[i][0] = '\0';
+            } else if (next_pattern == 1) {
+                *code = writePattern(&result, argv[i], ignore_case);
+                next_pattern = 0;
+                argv[i][0] = '\0';
+            } else if (next_pattern_file == 1) {
+                *code = writePatternsFile(&result, argv[i], ignore_case);
+                next_pattern_file = 0;
+                argv[i][0] = '\0';
+            } else {
+                ++files_counter;
             }
-            next_pattern = argv[i][len - 1] == 'e' ? 1 : 0;
-            next_pattern_file = argv[i][len - 1] == 'f' ? 1 : 0;
-            argv[i][0] = '\0';
-        } else if (next_pattern == 1) {
-            *code = writePattern(&result, argv[i], ignore_case);
-            next_pattern = 0;
-            argv[i][0] = '\0';
-        } else if (next_pattern_file == 1) {
-            *code = writePatternsFile(&result, argv[i], ignore_case);
-            next_pattern_file = 0;
-            argv[i][0] = '\0';
-        } else {
-            ++files_counter;
         }
     }
     if (files_counter == 1) {
@@ -267,6 +266,8 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                     handleUsuall(options, file, argv[i]);
                 }
                 fclose(file);
+            } else if (options->sOpt != 1) {
+                fprintf(stderr, "grep: %s: No such file\n", argv[i]);
             }
         }
     }
