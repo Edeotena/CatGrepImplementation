@@ -33,6 +33,10 @@ int checkSpecialOptions(int argc, char *argv[], int *iOpt);
 
 void freeRegex(GrepOptions *options);
 
+size_t handleLOption(const GrepOptions *options, FILE *file);
+
+size_t handleSOption(const GrepOptions *options, FILE *file);
+
 int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
@@ -103,6 +107,7 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             ++search_string;
         }
         *code = writePattern(&result, argv[search_string], ignore_case);
+        argv[search_string][0] = '\0';
     }
     for (int i = 1; i < argc && *code == 0; ++i) {
         if (i == search_string) {
@@ -190,6 +195,18 @@ size_t handleLOption(const GrepOptions *options, FILE *file) {
     return res;
 }
 
+size_t handleSOption(const GrepOptions *options, FILE *file) {
+    char *line = NULL;
+    size_t n, res = 0;
+    while (getline(&line, &n, file) != EOF) {
+        line[strlen(line) - 1] = '\0';
+        if (isPatternIn(options, line) == 1) {
+            ++res;
+        }
+    }
+    return res;
+}
+
 void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] != '\0') {
@@ -199,6 +216,12 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                     if (handleLOption(options, file) == 1) {
                         printf("%s\n", argv[i]);
                     }
+                } else if (options->cOpt == 1) {
+                    size_t count = handleSOption(options, file);
+                    if (options->hOpt == 0) {
+                        printf("%s:", argv[i]);
+                    }
+                    printf("%zu\n", count);
                 }
                 fclose(file);
             }
