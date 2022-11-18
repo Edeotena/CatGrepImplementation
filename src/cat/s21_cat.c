@@ -83,7 +83,7 @@ CatOptions getOptions(int argc, char *argv[], int *code) {
 }
 
 void catWithOptions(int argc, char *argv[], const CatOptions *options) {
-  int string_number = 1, empty_string = 0;
+  int string_number, empty_string = 0;
   for (int i = 1; i < argc; ++i) {
     if (argv[i][0] != '\0') {
       FILE *file = fopen(argv[i], "r");

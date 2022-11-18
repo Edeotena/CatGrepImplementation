@@ -126,6 +126,7 @@ int writePatternsFile(GrepOptions *options, char *file_name, int ignore_case) {
       }
       safeFree(line);
     }
+    fclose(file);
   } else {
     result = FILE_OPEN_ERROR;
   }
