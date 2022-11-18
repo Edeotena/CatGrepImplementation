@@ -39,7 +39,7 @@ void safeFree(char *line);
 // Работа команды греп при опции l
 size_t handleLOption(const GrepOptions *options, FILE *file);
 // Работа команды греп при опции s
-size_t handleSOption(const GrepOptions *options, FILE *file);
+size_t handleCOption(const GrepOptions *options, FILE *file);
 // Обработка символа в опцию
 void getSingleOptions(GrepOptions *options, char ch, int *code);
 // Обычная работа команды греп с учетом опций
@@ -128,7 +128,7 @@ void getSingleOptions(GrepOptions *options, char ch, int *code) {
         options->sOpt = 1;
     } else if (ch == 'o') {
         options->oOpt = 1;
-    } else if (ch != 'e' && ch != 'f'){
+    } else if (ch != 'e' && ch != 'f' && ch != 'i'){
         *code = UNRECOGNIZED_OPTION;
     }
 }
@@ -217,7 +217,7 @@ size_t handleLOption(const GrepOptions *options, FILE *file) {
     return res;
 }
 
-size_t handleSOption(const GrepOptions *options, FILE *file) {
+size_t handleCOption(const GrepOptions *options, FILE *file) {
     char *line = NULL;
     size_t n, res = 0;
     while (getline(&line, &n, file) != EOF) {
@@ -252,7 +252,7 @@ void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name)
                 printf("%s\n", line);
             } else {
                 for (int i = 0; i < m && offsets[i].rm_so != -1; ++i) {
-                    printf("%d %d", offsets[i].rm_so, offsets[i].rm_eo - offsets[i].rm_so);
+                    printf("%lld %lld", offsets[i].rm_so, offsets[i].rm_eo - offsets[i].rm_so);
                 }
             }
         }
@@ -271,10 +271,13 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
             if (file != NULL) {
                 if (options->lOpt == 1) {
                     if (handleLOption(options, file) == 1) {
+                        if (options->cOpt == 1) {
+                            printf("1\n");
+                        }
                         printf("%s\n", argv[i]);
                     }
                 } else if (options->cOpt == 1) {
-                    size_t count = handleSOption(options, file);
+                    size_t count = handleCOption(options, file);
                     if (options->hOpt == 0) {
                         printf("%s:", argv[i]);
                     }
