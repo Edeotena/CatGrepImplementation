@@ -29,7 +29,7 @@ int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case);
 // Функция определяющая работу по опциям
 void grepWithOptions(const GrepOptions *options, int argc, char **argv);
 // Проверка строки на наличие паттернов
-int isPatternIn(const GrepOptions *options, const char *line, int count, regmatch_t* offsets);
+int isPatternIn(const GrepOptions *options, const char *line);
 // Начальная проверка на опции -e -f -i
 int checkSpecialOptions(int argc, char *argv[], int *iOpt);
 // Освобождение выделенной памяти в структуре
@@ -38,8 +38,10 @@ void freeRegex(GrepOptions *options);
 void safeFree(char *line);
 // Работа команды греп при опции l
 size_t handleLOption(const GrepOptions *options, FILE *file);
-// Работа команды греп при опции s
+// Работа команды греп при опции c
 size_t handleCOption(const GrepOptions *options, FILE *file);
+// Работа команды греп при опции o
+void handleOOption(const GrepOptions *options, FILE *file, const char *file_name);
 // Обработка символа в опцию
 void getSingleOptions(GrepOptions *options, char ch, int *code);
 // Обычная работа команды греп с учетом опций
@@ -49,12 +51,12 @@ int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
         GrepOptions options = getOptions(argc, argv, &code);
-        freeRegex(&options);
         if (code == 0) {
             grepWithOptions(&options, argc, argv);
         } else {
             printf("n/a");
         }
+        freeRegex(&options);
     } else {
         printf("n/a");
     }
@@ -100,8 +102,8 @@ int writePatternsFile(GrepOptions *options, char* file_name, int ignore_case) {
     int result = 0;
     FILE *file = fopen(file_name, "r");
     if (file != NULL) {
-        char *line;
-        size_t len;
+        char *line = NULL;
+        size_t len = 0;
         while (getline(&line, &len, file) != EOF) {
             line[strlen(line) - 1] = '\0';
             writePattern(options, line, ignore_case);
@@ -174,10 +176,10 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
     return result;
 }
 
-int isPatternIn(const GrepOptions *options, const char *line, int count, regmatch_t* offsets) {
+int isPatternIn(const GrepOptions *options, const char *line) {
     int result = 0;
     for (int i = 0; i < options->patternsCount; ++i) {
-        if (regexec(&options->patterns[i], line, count, offsets, 0) == 0) {
+        if (regexec(&options->patterns[i], line, 0, NULL, 0) == 0) {
             result = 1;
         }
     }
@@ -209,7 +211,7 @@ size_t handleLOption(const GrepOptions *options, FILE *file) {
     size_t n, res = 0;
     while (getline(&line, &n, file) != EOF && res == 0) {
         line[strlen(line) - 1] = '\0';
-        if (isPatternIn(options, line, 0, NULL) == 1) {
+        if (isPatternIn(options, line) == 1) {
             res = 1;
         }
     }
@@ -222,7 +224,7 @@ size_t handleCOption(const GrepOptions *options, FILE *file) {
     size_t n, res = 0;
     while (getline(&line, &n, file) != EOF) {
         line[strlen(line) - 1] = '\0';
-        if (isPatternIn(options, line, 0, NULL) == 1) {
+        if (isPatternIn(options, line) == 1) {
             ++res;
         }
     }
@@ -230,18 +232,25 @@ size_t handleCOption(const GrepOptions *options, FILE *file) {
     return res;
 }
 
+void handleOOption(const GrepOptions *options, FILE *file, const char *file_name) {
+    char *line = NULL;
+    size_t n, res = 0;
+    while (getline(&line, &n, file) != EOF) {
+        line[strlen(line) - 1] = '\0';
+        if (isPatternIn(options, line) == 1) {
+            ++res;
+            printf("%s", file_name);
+        }
+    }
+    safeFree(line);
+}
+
 void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name) {
     char *line = NULL;
     size_t n, string_number = 1;
     while (getline(&line, &n, file) != EOF) {
         line[strlen(line) - 1] = '\0';
-        int m = 0;
-        regmatch_t *offsets = NULL;
-        if (options->oOpt == 1) {
-            m = 100;
-            offsets = (regmatch_t*) calloc(m, sizeof(regmatch_t));
-        }
-        if (isPatternIn(options, line, m, offsets) == 1) {
+        if (isPatternIn(options, line) == 1) {
             if (options->hOpt == 0) {
                 printf("%s:", file_name);
             }
@@ -250,14 +259,7 @@ void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name)
             }
             if (options->oOpt != 1) {
                 printf("%s\n", line);
-            } else {
-                for (int i = 0; i < m && offsets[i].rm_so != -1; ++i) {
-                    printf("%lld %lld", offsets[i].rm_so, offsets[i].rm_eo - offsets[i].rm_so);
-                }
             }
-        }
-        if (offsets != NULL) {
-            free(offsets);
         }
         ++string_number;
     }
@@ -272,6 +274,9 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                 if (options->lOpt == 1) {
                     if (handleLOption(options, file) == 1) {
                         if (options->cOpt == 1) {
+                            if (options->hOpt == 0) {
+                                printf("%s:", argv[i]);
+                            }
                             printf("1\n");
                         }
                         printf("%s\n", argv[i]);
@@ -282,6 +287,8 @@ void grepWithOptions(const GrepOptions *options, int argc, char **argv) {
                         printf("%s:", argv[i]);
                     }
                     printf("%zu\n", count);
+                } else  if (options-> oOpt == 1) {
+                    handleOOption(options, file, argv[i]);
                 } else {
                     handleUsuall(options, file, argv[i]);
                 }
