@@ -47,6 +47,12 @@ void getSingleOptions(GrepOptions *options, char ch, int *code);
 // Обычная работа команды греп с учетом опций
 void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name);
 
+size_t regmatchSize(const regmatch_t *offsets, size_t max);
+
+void addRegmatch(regmatch_t *dest, const regmatch_t *source, size_t *cap, size_t max, int *code);
+
+int findMinOffset(const GrepOptions *options, const char *line, regmatch_t *min);
+
 int main(int argc, char *argv[]) {
     if (argc > 1) {
         int code = 0;
@@ -59,6 +65,31 @@ int main(int argc, char *argv[]) {
         freeRegex(&options);
     } else {
         printf("n/a");
+    }
+}
+
+size_t regmatchSize(const regmatch_t *offsets, size_t max) {
+    size_t res;
+    for (res = 0; res < max && offsets[res].rm_so > 0; ++res) {}
+    return res;
+}
+
+void addRegmatch(regmatch_t *dest, const regmatch_t *source, size_t *cap, size_t max, int *code) {
+    size_t dest_size = regmatchSize(dest, *cap);
+    size_t adding_size = regmatchSize(source, max);
+
+    if (dest_size + adding_size + 1 >= *cap) {
+        *cap *= 2;
+        regmatch_t *new = (regmatch_t*)realloc(dest, sizeof(regmatch_t) * *cap);
+        if (new == NULL) {
+            *code = ALLOC_ERROR;
+        } else {
+            dest = new;
+        }
+    }
+
+    for (size_t i = 0; i < adding_size; ++i) {
+        dest[i + dest_size] = source[i];
     }
 }
 
@@ -235,10 +266,26 @@ size_t handleCOption(const GrepOptions *options, FILE *file) {
     return res;
 }
 
+int findMinOffset(const GrepOptions *options, const char *line, regmatch_t *min) {
+    size_t found = 0;
+    int res = 0;
+    regmatch_t match[2];
+    for (int i = 0; i < options->patternsCount; ++i) {
+        if (regexec(&options->patterns[i], line, 2, match, 0) == 0) {
+            if (found == 0 || match[0].rm_so < min->rm_so) {
+                *min = match[0];
+                found = 1;
+            }
+        }
+    }
+    return found;
+}
+
 void handleOOption(const GrepOptions *options, FILE *file, const char *file_name) {
     char *line = NULL;
     size_t n = 0, string_number = 0;
-    while (getline(&line, &n, file) != EOF) {
+    int code = 0;
+    while (getline(&line, &n, file) != EOF && code == 0) {
         ++string_number;
         line[strlen(line) - 1] = '\0';
         if (options->vOpt == 1) {
@@ -252,24 +299,23 @@ void handleOOption(const GrepOptions *options, FILE *file, const char *file_name
                 printf("%s\n", line);
             }
         } else {
-            size_t m = 100;
-            regmatch_t *offsets = (regmatch_t *) calloc(m, sizeof(regmatch_t));
-            for (int i = 0; i < options->patternsCount; ++i) {
-                regexec(&options->patterns[i], line, m, offsets, 0);
+            char *line_with_offset = line;
+            regmatch_t founded = {};
+            int first = 1;
+            while (findMinOffset(options, line_with_offset, &founded) != 0) {
+                if (first == 1) {
+                    first = 0;
+                    if (options->hOpt == 0) {
+                        printf("%s:", file_name);
+                    }
+                    if (options->nOpt == 1) {
+                        printf("%zu:", string_number);
+                    }
+                }
+                printf("%.*s\n", (int)(founded.rm_eo - founded.rm_so),
+                       line_with_offset + founded.rm_so);
+                line_with_offset += founded.rm_eo;
             }
-            for (size_t i = 0; i < m && offsets[i].rm_so < offsets[i].rm_eo; ++i) {
-                if (options->hOpt == 0) {
-                    printf("%s:", file_name);
-                }
-                if (options->nOpt == 1) {
-                    printf("%zu:", string_number);
-                }
-                for (size_t j = offsets[i].rm_so; j < (size_t)offsets[i].rm_eo; ++j) {
-                    printf("%c", line[j]);
-                }
-                printf("\n");
-            }
-            free(offsets);
         }
     }
     safeFree(line);
