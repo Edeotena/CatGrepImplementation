@@ -1,7 +1,7 @@
 CC = gcc
 FLAGS = -Wall -Wextra -Werror
 TARGET = s21_cat
-FILES = main.c
+FILES = s21_cat.c
 
 all: s21_cat
 

@@ -1,7 +1,7 @@
 CC = gcc
 FLAGS = -Wall -Wextra -Werror
 TARGET = s21_grep
-FILES = main.c
+FILES = s21_grep.c
 
 all: s21_grep
 
