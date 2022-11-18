@@ -215,7 +215,7 @@ int checkSpecialOptions(int argc, char *argv[], int *iOpt) {
   for (int i = 1; i < argc && result == 0; ++i) {
     if (argv[i][0] == '-') {
       size_t len = strlen(argv[i]);
-      for (size_t j = 1; j < len && result == 0; ++j) {
+      for (size_t j = 1; j < len; ++j) {
         if (argv[i][j] == 'i') {
           *iOpt = 1;
         } else if (argv[i][j] == 'e' || argv[i][j] == 'f') {
