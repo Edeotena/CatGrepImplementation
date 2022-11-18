@@ -1,0 +1,14 @@
+all: build test
+
+clean:
+	rm s21_grep
+
+build:
+	gcc -Wall -Wextra -Werror ../../src/grep/s21_grep.c -o s21_grep
+
+test:
+	sh test_func_grep.sh
+
+test_leak:
+	sh test_leak_grep.sh
+
