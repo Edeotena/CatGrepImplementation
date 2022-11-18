@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 }
 
 CatOptions getOptions(int argc, char *argv[], int *code) {
-  CatOptions result = {};
+  CatOptions result = {0};
   int file_found = 0, i;
   for (i = 1; i < argc && *code == 0 && file_found == 0; ++i) {
     if (argv[i][0] == '-' && argv[i][1] != '-') {

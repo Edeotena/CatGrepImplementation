@@ -1,12 +1,12 @@
 CC = gcc
-FLAGS = -Wall -Wextra -Werror
+FLAGS = -Wall -Wextra -Werror --std=c11 -fanalyzer -pedantic
 TARGET = s21_cat
 FILES = s21_cat.c
 
-all: s21_cat
+all: clean s21_cat
 
-s21_cat:
+s21_cat: $(FILES)
 	$(CC) $(FLAGS) -D_GNU_SOURCE $(FILES) -o $(TARGET)
 
 clean:
-	rm $(TARGET)
+	rm -f $(TARGET)

@@ -118,9 +118,9 @@ int writePatternsFile(GrepOptions *options, char *file_name, int ignore_case) {
   if (file != NULL) {
     char *line = (char *)calloc(buffer, sizeof(char));
     if (line != NULL) {
-      while (fgets(line, buffer, file) != NULL) {
+      while (fgets(line, buffer, file) != NULL && result == 0) {
         if (line[strlen(line) - 1] == '\n') {
-          line[strlen(line) - 1] = '\0';
+          result = line[strlen(line) - 1] = '\0';
         }
         writePattern(options, line, ignore_case);
       }
@@ -155,7 +155,7 @@ void getSingleOptions(GrepOptions *options, char ch, int *code) {
 
 GrepOptions getOptions(int argc, char *argv[], int *code) {
   int next_pattern = 0, next_pattern_file = 0, files_counter = 0;
-  GrepOptions result = {};
+  GrepOptions result = {0};
   int search_string = 0, ignore_case = 0;
   if (checkSpecialOptions(argc, argv, &ignore_case) != 1) {
     search_string = 1;
@@ -282,7 +282,7 @@ void handleOOption(const GrepOptions *options, FILE *file,
       line[strlen(line) - 1] = '\0';
     }
     char *line_with_offset = line;
-    regmatch_t founded = {};
+    regmatch_t founded = {0};
     int first = 1;
     while (findMinOffset(options, line_with_offset, &founded) != 0) {
       if (first == 1) {
