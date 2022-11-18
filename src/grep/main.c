@@ -170,6 +170,9 @@ GrepOptions getOptions(int argc, char* argv[], int *code) {
             }
         }
     }
+    if (next_pattern == 1 || next_pattern_file == 1) {
+        *code = UNRECOGNIZED_OPTION;
+    }
     if (files_counter == 1) {
         result.hOpt = 1;
     }
@@ -234,12 +237,39 @@ size_t handleCOption(const GrepOptions *options, FILE *file) {
 
 void handleOOption(const GrepOptions *options, FILE *file, const char *file_name) {
     char *line = NULL;
-    size_t n, res = 0;
+    size_t n = 0, string_number = 0;
     while (getline(&line, &n, file) != EOF) {
+        ++string_number;
         line[strlen(line) - 1] = '\0';
-        if (isPatternIn(options, line) == 1) {
-            ++res;
-            printf("%s", file_name);
+        if (options->vOpt == 1) {
+            if (isPatternIn(options, line) == 1) {
+                if (options->hOpt == 0) {
+                    printf("%s:", file_name);
+                }
+                if (options->nOpt == 1) {
+                    printf("%zu:", string_number);
+                }
+                printf("%s\n", line);
+            }
+        } else {
+            size_t m = 100;
+            regmatch_t *offsets = (regmatch_t *) calloc(m, sizeof(regmatch_t));
+            for (int i = 0; i < options->patternsCount; ++i) {
+                regexec(&options->patterns[i], line, m, offsets, 0);
+            }
+            for (size_t i = 0; i < m && offsets[i].rm_so < offsets[i].rm_eo; ++i) {
+                if (options->hOpt == 0) {
+                    printf("%s:", file_name);
+                }
+                if (options->nOpt == 1) {
+                    printf("%zu:", string_number);
+                }
+                for (size_t j = offsets[i].rm_so; j < (size_t)offsets[i].rm_eo; ++j) {
+                    printf("%c", line[j]);
+                }
+                printf("\n");
+            }
+            free(offsets);
         }
     }
     safeFree(line);
@@ -257,9 +287,7 @@ void handleUsuall(const GrepOptions *options, FILE *file, const char *file_name)
             if (options->nOpt == 1) {
                 printf("%zu:", string_number);
             }
-            if (options->oOpt != 1) {
-                printf("%s\n", line);
-            }
+            printf("%s\n", line);
         }
         ++string_number;
     }

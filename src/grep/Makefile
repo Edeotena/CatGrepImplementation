@@ -6,7 +6,7 @@ FILES = main.c
 all: s21_grep
 
 s21_grep:
-	$(CC) $(FLAGS) $(FILES) -o $(TARGET)
+	$(CC) $(FLAGS) -D_GNU_SOURCE $(FILES) -o $(TARGET)
 
 clean:
 	rm $(TARGET)

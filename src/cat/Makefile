@@ -6,7 +6,7 @@ FILES = main.c
 all: s21_cat
 
 s21_cat:
-	$(CC) $(FLAGS) $(FILES) -o $(TARGET)
+	$(CC) $(FLAGS) -D_GNU_SOURCE $(FILES) -o $(TARGET)
 
 clean:
 	rm $(TARGET)
